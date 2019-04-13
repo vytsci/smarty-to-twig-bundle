@@ -4,6 +4,6 @@ services:
     autoconfigure: true
     public: false
 
-  smarty-to-twig-converter:
-    class: 'VytSci\Bundle\SmartyToTwigBundle\Converter\Converter'
-
+  VytSci\Bundle\SmartyToTwigBundle\:
+    autowire: true
+    resource: '../../{Command,Converter/Converter.php}'

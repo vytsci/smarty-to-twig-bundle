@@ -13,61 +13,73 @@ use VytSci\Bundle\SmartyToTwigBundle\Converter\Config\ConfigInterface;
  */
 class Converter
 {
-	const VERSION = '0.1-DEV';
+    const VERSION = '0.1-DEV';
 
-	protected $converters = array();
-	protected $configs = array();
+    protected $converters = array();
+    protected $configs = array();
 
-	public function registerBuiltInConverters()
-	{
-		foreach (Finder::create()->files()->in(__DIR__.'/Converter') as $file) {
-			$class = 'toTwig\\Converter\\'.basename($file, '.php');
-			$this->addConverter(new $class());
-		}
-	}
+    public function registerBuiltInConverters()
+    {
+        foreach (Finder::create()->files()->depth('== 0')->in(__DIR__) as $file) {
+            $class = 'VytSci\\Bundle\\SmartyToTwigBundle\\Converter\\'.basename($file, '.php');
+            $reflection = new \ReflectionClass($class);
+            if ($reflection->isSubclassOf(ConverterAbstract::class)) {
+                $this->addConverter(new $class());
+            }
+        }
+    }
 
-	public function registerCustomConverters($converter)
-	{
-		foreach ($converter as $convert) {
-			$this->addConverter($convert);
-		}
-	}
+    public function registerCustomConverters($converter)
+    {
+        foreach ($converter as $convert) {
+            $this->addConverter($convert);
+        }
+    }
 
-	public function addConverter(ConverterAbstract $convert)
-	{
-		$this->converters[] = $convert;
-	}
+    public function addConverter(ConverterAbstract $convert)
+    {
+        $this->converters[] = $convert;
+    }
 
     /**
      * @return mixed|ConverterAbstract[]
      */
-	public function getConverters()
-	{
-		$this->sortConverters();
+    public function getConverters()
+    {
+        $this->sortConverters();
 
-		return $this->converters;
-	}
+        return $this->converters;
+    }
 
-	public function registerBuiltInConfigs()
-	{
-		foreach (Finder::create()->files()->in(__DIR__.'/Config') as $file) {
-			$class = 'toTwig\\Config\\'.basename($file, '.php');
-			$this->addConfig(new $class());
-		}
-	}
+    /**
+     * @throws \ReflectionException
+     */
+    public function registerBuiltInConfigs()
+    {
+        foreach (Finder::create()->files()->in(__DIR__.'/Config') as $file) {
+            $class = 'VytSci\\Bundle\\SmartyToTwigBundle\\Converter\\Config\\'.basename($file, '.php');
+            if (strpos($class, 'Interface')) {
+                continue;
+            }
+            $reflection = new \ReflectionClass($class);
+            if ($reflection->implementsInterface(ConfigInterface::class)) {
+                $this->addConfig(new $class());
+            }
+        }
+    }
 
-	public function addConfig(ConfigInterface $config)
-	{
-		$this->configs[] = $config;
-	}
+    public function addConfig(ConfigInterface $config)
+    {
+        $this->configs[] = $config;
+    }
 
     /**
      * @return array|ConfigInterface[]
      */
-	public function getConfigs()
-	{
-		return $this->configs;
-	}
+    public function getConfigs()
+    {
+        return $this->configs;
+    }
 
     /**
      * Fixes all files for the given finder.
@@ -77,109 +89,114 @@ class Converter
      * @param Boolean $diff Whether to provide diff
      * @return array
      */
-	public function convert(ConfigInterface $config, $dryRun = false, $diff = false, $outputExt='')
-	{
-		$this->sortConverters();
+    public function convert(ConfigInterface $config, $dryRun = false, $diff = false, $outputExt='')
+    {
+        $this->sortConverters();
 
-		$converter = $this->prepareConverters($config);
-		$changed = array();
-		foreach ($config->getFinder() as $file) {
-			if ($file->isDir()) {
-				continue;
-			}
+        $converter = $this->prepareConverters($config);
+        $changed = array();
+        foreach ($config->getFinder() as $file) {
+            if ($file->isDir()) {
+                continue;
+            }
 
-			if ($fixInfo = $this->conVertFile($file, $converter, $dryRun, $diff, $outputExt)) {
-				if ($file instanceof FinderSplFileInfo) {
-					$changed[$file->getRelativePathname()] = $fixInfo;
-				} else {
-					$changed[$file->getPathname()] = $fixInfo;
-				}
-			}
-		}
+            if ($fixInfo = $this->conVertFile($file, $converter, $dryRun, $diff, $outputExt)) {
+                if ($file instanceof FinderSplFileInfo) {
+                    $changed[$file->getRelativePathname()] = $fixInfo;
+                } else {
+                    $changed[$file->getPathname()] = $fixInfo;
+                }
+            }
+        }
 
-		return $changed;
-	}
+        return $changed;
+    }
 
-	public function conVertFile(\SplFileInfo $file, array $converter, $dryRun, $diff, $outputExt)
-	{
-		$new = $old = file_get_contents($file->getRealpath());
-		$appliedConverters = array();
+    public function conVertFile(\SplFileInfo $file, array $converter, $dryRun, $diff, $outputExt)
+    {
+        $new = $old = file_get_contents($file->getRealpath());
+        $appliedConverters = array();
 
-		foreach ($converter as $convert) {
-			if (!$convert->supports($file)) {
-				continue;
-			}
+        foreach ($converter as $convert) {
+            if (!$convert->supports($file)) {
+                continue;
+            }
 
-			$new1 = $convert->convert($file, $new);
-			if ($new1 != $new) {
-				$appliedConverters[] = $convert->getName();
-			}
-			$new = $new1;
-		}
+            $new1 = $convert->convert($file, $new);
+            if ($new1 != $new) {
+                $appliedConverters[] = $convert->getName();
+            }
+            $new = $new1;
+        }
 
-		if ($new != $old) {
-			if (!$dryRun) {
-				
-				$filename = $file->getRealpath();
+        if ($new != $old) {
+            if (!$dryRun) {
 
-				$ext = strrchr($filename, '.');
-				if ($outputExt) {
-					$filename = rtrim($filename,$ext).'.'.trim($outputExt,'.');
-				}
+                $filename = $file->getRealpath();
 
-				file_put_contents($filename, $new);
-			}
+                $ext = strrchr($filename, '.');
+                if ($outputExt) {
+                    $filePathinfo = pathinfo($filename);
+                    $filename = pathinfo($filename, PATHINFO_DIRNAME)
+                        . DIRECTORY_SEPARATOR
+                        . pathinfo($filename, PATHINFO_FILENAME)
+                        . '.' . $outputExt
+                    ;
+                }
 
-			$fixInfo = array('appliedConverters' => $appliedConverters);
+                file_put_contents($filename, $new);
+            }
 
-			if ($diff) {
-				$fixInfo['diff'] = $this->stringDiff($old, $new);
-			}
+            $fixInfo = array('appliedConverters' => $appliedConverters);
 
-			return $fixInfo;
-		}
-	}
+            if ($diff) {
+                $fixInfo['diff'] = $this->stringDiff($old, $new);
+            }
 
-	protected function stringDiff($old, $new)
-	{
-		$diff = new Diff($old, $new);
+            return $fixInfo;
+        }
+    }
 
-		$diff = implode(PHP_EOL, array_map(function ($string) {
-			$string = preg_replace('/^(\+){3}/', '<info>+++</info>', $string);
-			$string = preg_replace('/^(\+){1}/', '<info>+</info>', $string);
+    protected function stringDiff($old, $new)
+    {
+        $diff = new Diff($old, $new);
 
-			$string = preg_replace('/^(\-){3}/', '<error>---</error>', $string);
-			$string = preg_replace('/^(\-){1}/', '<error>-</error>', $string);
+        $diff = implode(PHP_EOL, array_map(function ($string) {
+            $string = preg_replace('/^(\+){3}/', '<info>+++</info>', $string);
+            $string = preg_replace('/^(\+){1}/', '<info>+</info>', $string);
 
-			$string = str_repeat(' ', 6) . $string;
+            $string = preg_replace('/^(\-){3}/', '<error>---</error>', $string);
+            $string = preg_replace('/^(\-){1}/', '<error>-</error>', $string);
 
-			return $string;
-		}, explode(PHP_EOL, $diff)));
+            $string = str_repeat(' ', 6) . $string;
 
-		return $diff;
-	}
+            return $string;
+        }, explode(PHP_EOL, $diff)));
 
-	private function sortConverters()
-	{
-		usort($this->converters, function (ConverterAbstract $a, ConverterAbstract $b) {
-			if ($a->getPriority() == $b->getPriority()) {
-				return 0;
-			}
+        return $diff;
+    }
 
-			return $a->getPriority() > $b->getPriority() ? -1 : 1;
-		});
-	}
+    private function sortConverters()
+    {
+        usort($this->converters, function (ConverterAbstract $a, ConverterAbstract $b) {
+            if ($a->getPriority() == $b->getPriority()) {
+                return 0;
+            }
 
-	private function prepareConverters(ConfigInterface $config)
-	{
-		$converters = $config->getConverters();
+            return $a->getPriority() > $b->getPriority() ? -1 : 1;
+        });
+    }
 
-		/*foreach ($converters as $converter) {
-			if ($converter instanceof ConverterAbstract) {
-				$converter->setConfig($config);
-			}
-		}*/
+    private function prepareConverters(ConfigInterface $config)
+    {
+        $converters = $config->getConverters();
 
-		return $converters;
-	}
+        /*foreach ($converters as $converter) {
+            if ($converter instanceof ConverterAbstract) {
+                $converter->setConfig($config);
+            }
+        }*/
+
+        return $converters;
+    }
 }

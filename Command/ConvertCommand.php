@@ -1,6 +1,6 @@
 <?php
 
-namespace VytSci\Bundle\SmartyToTwig;
+namespace VytSci\Bundle\SmartyToTwigBundle\Command;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -14,7 +14,7 @@ use VytSci\Bundle\SmartyToTwigBundle\Converter\Converter;
 
 /**
  * Class ConvertCommand
- * @package VytSci\Bundle\SmartyToTwig
+ * @package VytSci\Bundle\SmartyToTwig\Command
  */
 class ConvertCommand extends Command
 {
