@@ -1,0 +1,9 @@
+services:
+  _defaults:
+    autowire: false
+    autoconfigure: true
+    public: false
+
+  smarty-to-twig-converter:
+    class: 'VytSci\Bundle\SmartyToTwigBundle\Converter\Converter'
+

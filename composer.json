@@ -1,0 +1,27 @@
+{
+    "name": "vytsci/smarty-to-twig-bundle",
+    "description": "Convert Smarty into Twig easily",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ishiki",
+            "email": "vytsci@gmail.com"
+        }
+    ],
+    "require": {
+        "ext-dom": "*",
+        "symfony/finder": "^4.0",
+        "symfony/filesystem": "^4.0",
+        "symfony/console": "^4.0",
+        "symfony/yaml": "^4.0",
+        "symfony/dependency-injection": "^4.0",
+        "symfony/config": "^4.0",
+        "sebastian/diff": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "VytSci\\Bundle\\SmartyToTwigBundle\\": ""
+        }
+    }
+}
